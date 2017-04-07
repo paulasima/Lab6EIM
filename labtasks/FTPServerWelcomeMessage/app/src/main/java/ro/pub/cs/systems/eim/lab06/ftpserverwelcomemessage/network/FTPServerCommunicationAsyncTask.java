@@ -4,9 +4,12 @@ import android.os.AsyncTask;
 import android.util.Log;
 import android.widget.TextView;
 
+import java.io.BufferedReader;
+import java.io.IOException;
 import java.net.Socket;
 
 import ro.pub.cs.systems.eim.lab06.ftpserverwelcomemessage.general.Constants;
+import ro.pub.cs.systems.eim.lab06.ftpserverwelcomemessage.general.Utilities;
 
 public class FTPServerCommunicationAsyncTask extends AsyncTask<String, String, Void> {
 
@@ -29,10 +32,34 @@ public class FTPServerCommunicationAsyncTask extends AsyncTask<String, String, V
             // - the value does not start with Constants.FTP_MULTILINE_END_CODE2 = "220 "
             // append the line to the welcomeMessageTextView text view content (on the UI thread !!!) - publishProgress(...)
             // close the socket
+            socket = new Socket(params[0], Constants.FTP_PORT);
+            if (socket == null) {
+                return null;
+            }
+            BufferedReader bfR = Utilities.getReader(socket);
+            String line = bfR.readLine();
+            if (line !=null && line.startsWith(Constants.FTP_MULTILINE_START_CODE)) {
+                while ((line = bfR.readLine()) != null) {
+                    if(Constants.FTP_MULTILINE_END_CODE1.equals(line) || line.startsWith(Constants.FTP_MULTILINE_END_CODE2)) {
+                        break;
+                    }
+                    else {
+                        publishProgress(line);
+                    }
+                }
+            }
         } catch (Exception exception) {
             Log.d(Constants.TAG, exception.getMessage());
             if (Constants.DEBUG) {
                 exception.printStackTrace();
+            }
+        }
+        finally {
+            try {
+                socket.close();
+            }
+            catch(IOException e) {
+                Log.d(Constants.TAG, e.getMessage());
             }
         }
         return null;
@@ -47,6 +74,7 @@ public class FTPServerCommunicationAsyncTask extends AsyncTask<String, String, V
     protected void onProgressUpdate(String... progres) {
         // TODO exercise 4
         // append the progress[0] to the welcomeMessageTextView text view
+        welcomeMessageTextView.append(progres[0]);
     }
 
     @Override
